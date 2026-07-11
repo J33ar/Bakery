@@ -24,15 +24,20 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
 
       - name: Install dependencies
-        run: npm install
-        working-directory: artifacts/bakery-erp
+        run: pnpm install --frozen-lockfile
+        working-directory: .
 
       - name: Build
-        run: npm run build
-        working-directory: artifacts/bakery-erp
+        run: pnpm --filter @workspace/bakery-erp build
+        working-directory: .
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
