@@ -155,7 +155,19 @@ router.delete("/employees/:id", requireAuth, async (req, res): Promise<void> => 
     res.status(404).json({ error: "الموظف غير موجود" });
     return;
   }
-  await logAudit(req.session.user, employee.branchId.toString(), "حذف موظف", `تم حذف الموظف ${employee.fullName}`);
+
+  // حذف جميع البيانات المرتبطة بالموظف
+  const empId = employee._id.toString();
+  await Promise.all([
+    AttendanceModel.deleteMany({ employeeId: empId }),
+    LeaveModel.deleteMany({ employeeId: empId }),
+    BonusModel.deleteMany({ employeeId: empId }),
+    DeductionModel.deleteMany({ employeeId: empId }),
+    LoanModel.deleteMany({ employeeId: empId }),
+    PayrollModel.deleteMany({ employeeId: empId }),
+  ]);
+
+  await logAudit(req.session.user, employee.branchId.toString(), "حذف موظف", `تم حذف الموظف ${employee.fullName} وجميع بياناته`);
   res.status(204).send();
 });
 
