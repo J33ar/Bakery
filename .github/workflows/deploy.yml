@@ -39,6 +39,8 @@ jobs:
       - name: Build
         run: pnpm --filter @workspace/bakery-erp build
         working-directory: .
+        env:
+          VITE_API_URL: https://bakery-bd0f.onrender.com
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
