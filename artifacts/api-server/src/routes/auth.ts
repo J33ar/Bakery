@@ -84,17 +84,28 @@ router.post("/auth/change-password", requireAuth, async (req, res): Promise<void
     res.status(400).json({ error: "كلمة المرور يجب أن تكون 4 أحرف على الأقل" });
     return;
   }
+
+  // نحصل على الـ user ID من الـ JWT أو الـ session
+  const userId = req.session.user?.id;
+  if (!userId) {
+    res.status(401).json({ error: "غير مصرح بالدخول" });
+    return;
+  }
+
   const { hashPassword } = await import("../lib/auth");
   const passwordHash = await hashPassword(password);
+
   const user = await UserModel.findByIdAndUpdate(
-    req.session.user!.id,
+    userId,
     { passwordHash },
     { new: true }
   );
+
   if (!user) {
     res.status(404).json({ error: "المستخدم غير موجود" });
     return;
   }
+
   await logAudit(req.session.user, user.branchId?.toString() ?? null, "تغيير كلمة المرور", `${user.fullName} غيّر كلمة المرور`);
   res.json({ success: true });
 });
