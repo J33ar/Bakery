@@ -24,6 +24,17 @@ import AuditLog from '@/pages/audit-log';
 import Users from '@/pages/users';
 import Settings from '@/pages/settings';
 
+const STORAGE_KEY = 'bakery_user';
+
+function getStoredUser() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -32,6 +43,12 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// استرجع بيانات المستخدم من localStorage عند بدء التطبيق
+const storedUser = getStoredUser();
+if (storedUser) {
+  queryClient.setQueryData(['/api/auth/me'], storedUser);
+}
 
 function Router() {
   return (

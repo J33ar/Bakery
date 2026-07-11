@@ -31,9 +31,11 @@ export default function Login() {
   
   const loginMutation = useLogin({
     mutation: {
-      onSuccess: async () => {
-        // أخبر الـ layout إن المستخدم تغيّر
-        await queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+      onSuccess: async (userData) => {
+        // نحفظ بيانات المستخدم في localStorage عشان تبقى بعد الـ refresh
+        localStorage.setItem('bakery_user', JSON.stringify(userData));
+        // نحفظ في الـ query cache مباشرة بدل ما نعيد طلب /api/auth/me
+        queryClient.setQueryData(['/api/auth/me'], userData);
         toast({
           title: "تم تسجيل الدخول بنجاح",
           description: "مرحباً بك في نظام المخبز",

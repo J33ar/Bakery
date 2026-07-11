@@ -37,6 +37,10 @@ export function SharedLayout({ children }: SharedLayoutProps) {
     query: {
       retry: false,
       refetchOnWindowFocus: false,
+      // في الـ production (GitHub Pages) نعتمد على الـ cache فقط لأن الكوكيز لا تنتقل cross-origin
+      // الـ staleTime اللانهائي يمنع إعادة الطلب تلقائياً
+      staleTime: import.meta.env.PROD ? Infinity : 0,
+      gcTime: import.meta.env.PROD ? Infinity : 5 * 60 * 1000,
       queryKey: ['/api/auth/me'],
     }
   });
@@ -55,6 +59,7 @@ export function SharedLayout({ children }: SharedLayoutProps) {
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
       onSettled: () => {
+        localStorage.removeItem('bakery_user');
         queryClient.clear();
         setLocation("/");
       }
