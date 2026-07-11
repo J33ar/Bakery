@@ -9,6 +9,7 @@ import './index.css';
 const apiUrl = import.meta.env.VITE_API_URL;
 if (apiUrl) {
   setBaseUrl(apiUrl);
+  (window as any).__API_BASE_URL__ = apiUrl;
 }
 
 createRoot(document.getElementById('root')!).render(<App />);

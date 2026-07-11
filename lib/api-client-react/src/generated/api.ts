@@ -77,7 +77,16 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 
       type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
+function resolveApiUrl(input: RequestInfo | URL): RequestInfo | URL {
+  const base = (typeof window !== 'undefined' && (window as any).__API_BASE_URL__) || '';
+  if (!base) return input;
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : (input as Request).url;
+  if (url.startsWith('/')) return `${base}${url}`;
+  return input;
+}
+
 async function fetchWithError(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  input = resolveApiUrl(input);
   const response = await fetch(input, { credentials: "include", ...init });
   if (!response.ok) {
     let message = `فشل الطلب بكود ${response.status}`;
