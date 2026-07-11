@@ -40,6 +40,11 @@ router.get("/deductions", requireAuth, async (req, res): Promise<void> => {
   if (employeeIds) {
     rows = rows.filter((r: any) => employeeIds!.includes(r.employeeId.toString()));
   }
+
+  // فلترة السجلات اليتيمة (موظفون محذوفون)
+  const allEmployeeIds = (await EmployeeModel.find({}).select("_id")).map((e: any) => e._id.toString());
+  rows = rows.filter((r: any) => allEmployeeIds.includes(r.employeeId.toString()));
+
   res.json(await Promise.all(rows.map(serialize)));
 });
 
