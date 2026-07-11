@@ -31,10 +31,15 @@ export default function Settings() {
 
     setIsSaving(true);
     try {
-      const res = await fetch("/api/auth/change-password", {
+      const base = (window as any).__API_BASE_URL__ ?? '';
+      const token = localStorage.getItem('bakery_token');
+      const res = await fetch(`${base}/api/auth/change-password`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ password }),
       });
       const data = await res.json();
