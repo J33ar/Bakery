@@ -14,6 +14,7 @@ import payrollRouter from "./payroll";
 import warehouseRouter from "./warehouse";
 import auditRouter from "./audit";
 import dashboardRouter from "./dashboard";
+import cleanupRouter from "./cleanup";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(payrollRouter);
 router.use(warehouseRouter);
 router.use(auditRouter);
 router.use(dashboardRouter);
+router.use(cleanupRouter);
 
 export default router;
