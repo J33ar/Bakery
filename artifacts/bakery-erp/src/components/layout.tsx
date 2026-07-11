@@ -59,6 +59,7 @@ export function SharedLayout({ children }: SharedLayoutProps) {
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
       onSettled: () => {
+        localStorage.removeItem('bakery_token');
         localStorage.removeItem('bakery_user');
         queryClient.clear();
         setLocation("/");

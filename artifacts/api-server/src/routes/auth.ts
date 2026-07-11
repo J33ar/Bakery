@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { UserModel, BranchModel } from "@workspace/db";
 import { LoginBody, ListAuthBranchesResponse, GetCurrentUserResponse } from "@workspace/api-zod";
-import { comparePassword, requireAuth, type SessionUser } from "../lib/auth";
+import { comparePassword, requireAuth, signToken, verifyToken, type SessionUser } from "../lib/auth";
 import { logAudit } from "../lib/audit";
 
 const router: IRouter = Router();
@@ -63,7 +63,9 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   req.session.user = sessionUser;
   await logAudit(sessionUser, sessionUser.branchId, "تسجيل دخول", `${candidate.fullName} سجل الدخول`);
 
-  res.json(GetCurrentUserResponse.parse(await withBranchName(sessionUser)));
+  const token = signToken(sessionUser);
+  const userData = await withBranchName(sessionUser);
+  res.json({ ...GetCurrentUserResponse.parse(userData), token });
 });
 
 router.post("/auth/logout", requireAuth, async (req, res): Promise<void> => {
@@ -98,6 +100,20 @@ router.post("/auth/change-password", requireAuth, async (req, res): Promise<void
 });
 
 router.get("/auth/me", async (req, res): Promise<void> => {
+  // قبول JWT من Authorization header (cross-origin production)
+  const authHeader = req.headers["authorization"];
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    const user = verifyToken(token);
+    if (!user) {
+      res.status(401).json({ error: "غير مصرح بالدخول" });
+      return;
+    }
+    res.json(GetCurrentUserResponse.parse(await withBranchName(user)));
+    return;
+  }
+
+  // session cookie fallback للتطوير المحلي
   if (!req.session.user) {
     res.status(401).json({ error: "غير مصرح بالدخول" });
     return;

@@ -85,9 +85,21 @@ function resolveApiUrl(input: RequestInfo | URL): RequestInfo | URL {
   return input;
 }
 
+function getAuthHeaders(): Record<string, string> {
+  try {
+    const token = localStorage.getItem('bakery_token');
+    if (token) return { 'Authorization': `Bearer ${token}` };
+  } catch {}
+  return {};
+}
+
 async function fetchWithError(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   input = resolveApiUrl(input);
-  const response = await fetch(input, { credentials: "include", ...init });
+  const response = await fetch(input, {
+    credentials: "include",
+    ...init,
+    headers: { ...getAuthHeaders(), ...(init?.headers as Record<string, string> ?? {}) },
+  });
   if (!response.ok) {
     let message = `فشل الطلب بكود ${response.status}`;
     try {

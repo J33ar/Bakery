@@ -40,6 +40,9 @@ const queryClient = new QueryClient({
     queries: {
       retry: false,
       refetchOnWindowFocus: false,
+      // في الـ production نمنع إعادة طلب /api/auth/me تلقائياً (cross-origin cookies لا تعمل)
+      staleTime: import.meta.env.PROD ? Infinity : 0,
+      gcTime: import.meta.env.PROD ? Infinity : 5 * 60 * 1000,
     },
   },
 });

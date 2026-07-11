@@ -32,9 +32,14 @@ export default function Login() {
   const loginMutation = useLogin({
     mutation: {
       onSuccess: async (userData) => {
-        // نحفظ بيانات المستخدم في localStorage عشان تبقى بعد الـ refresh
+        // حفظ الـ JWT token في localStorage
+        const token = (userData as any).token;
+        if (token) {
+          localStorage.setItem('bakery_token', token);
+        }
+        // حفظ بيانات المستخدم في localStorage للـ refresh
         localStorage.setItem('bakery_user', JSON.stringify(userData));
-        // نحفظ في الـ query cache مباشرة بدل ما نعيد طلب /api/auth/me
+        // نحفظ في الـ query cache مباشرة
         queryClient.setQueryData(['/api/auth/me'], userData);
         toast({
           title: "تم تسجيل الدخول بنجاح",
