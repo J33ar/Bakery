@@ -2445,6 +2445,27 @@ export const useDeleteOvertimeRate = <TError = unknown, TContext = unknown>(
   return useMutation(getDeleteOvertimeRateMutationOptions(options));
 };
 
+// Update overtime rate
+export const updateOvertimeRate = async (id: string, data: { ratePerHour?: number; effectiveFrom?: string; effectiveTo?: string | null }, options?: RequestInit): Promise<OvertimeRate> => {
+  const res = await fetchWithError(`/api/overtime-rates/${id}`, {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(data),
+  });
+  const body = await res.text();
+  return body ? JSON.parse(body) : {};
+};
+
+export const useUpdateOvertimeRate = <TError = unknown, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<OvertimeRate, TError, { id: string; data: { ratePerHour?: number; effectiveFrom?: string; effectiveTo?: string | null } }, TContext>; fetch?: RequestInit }
+): UseMutationResult<OvertimeRate, TError, { id: string; data: { ratePerHour?: number; effectiveFrom?: string; effectiveTo?: string | null } }, TContext> => {
+  return useMutation({
+    mutationFn: ({ id, data }) => updateOvertimeRate(id, data, options?.fetch),
+    ...options?.mutation,
+  });
+};
+
 export const getListBonusesUrl = (params?: ListBonusesParams,) => {
   const normalizedParams = new URLSearchParams();
 

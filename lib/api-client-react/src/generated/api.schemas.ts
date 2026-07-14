@@ -278,6 +278,8 @@ export interface OvertimeRate {
   branchId: string;
   ratePerHour: number;
   effectiveFrom: string;
+  /** @nullable */
+  effectiveTo?: string | null;
 }
 
 export interface OvertimeRateInput {
@@ -285,6 +287,15 @@ export interface OvertimeRateInput {
   /** @minimum 0 */
   ratePerHour: number;
   effectiveFrom: string;
+  /** @nullable */
+  effectiveTo?: string | null;
+}
+
+export interface OvertimeRateUpdate {
+  ratePerHour?: number;
+  effectiveFrom?: string;
+  /** @nullable */
+  effectiveTo?: string | null;
 }
 
 export interface Bonus {

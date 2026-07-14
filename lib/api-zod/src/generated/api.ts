@@ -703,7 +703,8 @@ export const ListOvertimeRatesResponseItem = zod.object({
   "id": zod.string(),
   "branchId": zod.string(),
   "ratePerHour": zod.number(),
-  "effectiveFrom": zod.string()
+  "effectiveFrom": zod.string(),
+  "effectiveTo": zod.string().nullable().optional()
 })
 export const ListOvertimeRatesResponse = zod.array(ListOvertimeRatesResponseItem)
 
@@ -718,14 +719,37 @@ export const createOvertimeRateBodyRatePerHourMin = 0;
 export const CreateOvertimeRateBody = zod.object({
   "branchId": zod.string(),
   "ratePerHour": zod.number().min(createOvertimeRateBodyRatePerHourMin),
-  "effectiveFrom": zod.string()
+  "effectiveFrom": zod.string(),
+  "effectiveTo": zod.string().nullable().optional()
 })
 
 export const CreateOvertimeRateResponse = zod.object({
   "id": zod.string(),
   "branchId": zod.string(),
   "ratePerHour": zod.number(),
-  "effectiveFrom": zod.string()
+  "effectiveFrom": zod.string(),
+  "effectiveTo": zod.string().nullable().optional()
+})
+
+/**
+ * @summary Update an overtime rate
+ */
+export const UpdateOvertimeRateParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateOvertimeRateBody = zod.object({
+  "ratePerHour": zod.number().min(0).optional(),
+  "effectiveFrom": zod.string().optional(),
+  "effectiveTo": zod.string().nullable().optional()
+})
+
+export const UpdateOvertimeRateResponse = zod.object({
+  "id": zod.string(),
+  "branchId": zod.string(),
+  "ratePerHour": zod.number(),
+  "effectiveFrom": zod.string(),
+  "effectiveTo": zod.string().nullable().optional()
 })
 
 

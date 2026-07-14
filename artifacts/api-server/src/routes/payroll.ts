@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { PayrollModel, EmployeeModel, LoanModel } from "@workspace/db";
+import { PayrollModel, EmployeeModel, LoanModel, BranchModel } from "@workspace/db";
 import {
   ListPayrollQueryParams,
   GeneratePayrollBody,
@@ -14,11 +14,13 @@ const router: IRouter = Router();
 
 async function serialize(p: any) {
   const employee = await EmployeeModel.findById(p.employeeId);
+  const branch   = employee?.branchId ? await BranchModel.findById(employee.branchId) : null;
   return {
     id: p._id.toString(),
     employeeId: p.employeeId.toString(),
     employeeName: employee?.fullName ?? "",
     branchId: employee?.branchId?.toString() ?? "",
+    branchName: branch?.name ?? "",
     month: p.month,
     year: p.year,
     baseSalary: Number(p.baseSalary),

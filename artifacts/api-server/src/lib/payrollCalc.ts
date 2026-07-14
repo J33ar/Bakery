@@ -19,10 +19,15 @@ async function getOvertimeRateOn(
   const rates = await OvertimeRateModel.find({
     branchId,
     effectiveFrom: { $lte: onDate },
-  }).sort({ effectiveFrom: 1 });
+    $or: [
+      { effectiveTo: null },
+      { effectiveTo: { $exists: false } },
+      { effectiveTo: { $gte: onDate } },
+    ],
+  }).sort({ effectiveFrom: -1 });
 
   if (rates.length === 0) return 0;
-  return Number(rates[rates.length - 1]!.ratePerHour);
+  return Number(rates[0]!.ratePerHour);
 }
 
 export interface PayrollCalcResult {

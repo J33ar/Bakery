@@ -40,9 +40,7 @@ const queryClient = new QueryClient({
     queries: {
       retry: false,
       refetchOnWindowFocus: false,
-      // في الـ production نمنع إعادة طلب /api/auth/me تلقائياً (cross-origin cookies لا تعمل)
-      staleTime: import.meta.env.PROD ? Infinity : 0,
-      gcTime: import.meta.env.PROD ? Infinity : 5 * 60 * 1000,
+      staleTime: 0,
     },
   },
 });
@@ -50,7 +48,13 @@ const queryClient = new QueryClient({
 // استرجع بيانات المستخدم من localStorage عند بدء التطبيق
 const storedUser = getStoredUser();
 if (storedUser) {
+  // نضع staleTime لانهائي فقط لـ /api/auth/me لأن الـ JWT يُرسل في الـ header
+  // وما نحتاج إعادة طلبه — الـ JWT يتحقق منه في كل طلب ثاني
   queryClient.setQueryData(['/api/auth/me'], storedUser);
+  queryClient.setQueryDefaults(['/api/auth/me'], {
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
 }
 
 function Router() {

@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { UserCog, Plus, Trash2, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,7 @@ export default function Users() {
   const [active, setActive] = React.useState(true);
   const [isEditOpen, setIsEditOpen] = React.useState(false);
   const [editId, setEditId] = React.useState(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<{ id: string; name: string } | null>(null);
 
   const { data: users, isLoading, isError, refetch } = useListUsers(
     {},
@@ -239,6 +241,7 @@ export default function Users() {
         }
       />
 
+      {/* نافذة تعديل المستخدم */}
       <Dialog open={isEditOpen} onOpenChange={(open) => { setIsEditOpen(open); if(!open) resetForm(); }}>
         <DialogContent>
           <DialogHeader>
@@ -295,6 +298,32 @@ export default function Users() {
         </DialogContent>
       </Dialog>
 
+      {/* نافذة تأكيد الحذف */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل أنت متأكد من حذف المستخدم <strong>"{deleteTarget?.name}"</strong>؟ لا يمكن التراجع عن هذا الإجراء.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteTarget) {
+                  deleteUser.mutate({ id: deleteTarget.id });
+                  setDeleteTarget(null);
+                }
+              }}
+            >
+              نعم، احذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
         {(!users || users.length === 0) ? (
           <EmptyState 
@@ -332,7 +361,6 @@ export default function Users() {
                       {u.active ? <Badge className="bg-green-500">نشط</Badge> : <Badge variant="destructive">معطل</Badge>}
                     </TableCell>
                     <TableCell className="text-right">
-                      
                       <Button 
                         variant="ghost" 
                         size="sm" 
@@ -346,7 +374,7 @@ export default function Users() {
                           variant="ghost" 
                           size="sm" 
                           className="text-destructive hover:bg-destructive/10"
-                          onClick={() => deleteUser.mutate({ id: u.id })}
+                          onClick={() => setDeleteTarget({ id: u.id, name: u.fullName })}
                           disabled={deleteUser.isPending}
                         >
                           <Trash2 size={16} />
