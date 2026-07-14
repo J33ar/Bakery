@@ -47,7 +47,7 @@ export default function Attendance() {
 
   const { data: attendanceData, isLoading, isError, refetch } = useListAttendance(
     { branchId, date },
-    { query: { enabled: !!user, queryKey: ["attendance", branchId, date] } }
+    { query: { enabled: !!user, staleTime: 0, queryKey: ["attendance", branchId, date] } }
   );
 
   const { data: employees } = useListEmployees(
@@ -57,9 +57,19 @@ export default function Attendance() {
 
   const checkInMutation = useCheckIn({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (newRecord) => {
         toast({ title: "تم تسجيل الدخول", description: "تم تسجيل وقت الدخول بنجاح" });
-        queryClient.invalidateQueries({ queryKey: ["attendance"] });
+        // نحدّث الـ cache مباشرة من الـ response
+        queryClient.setQueryData(
+          ["attendance", branchId, date],
+          (old: any[] = []) => {
+            const exists = old.find((r) => r.employeeId === newRecord.employeeId);
+            if (exists) {
+              return old.map((r) => r.employeeId === newRecord.employeeId ? newRecord : r);
+            }
+            return [...old, newRecord];
+          }
+        );
       },
       onError: (err: any) => {
         toast({ variant: "destructive", title: "خطأ", description: err.message || "حدث خطأ أثناء التسجيل" });
@@ -69,9 +79,13 @@ export default function Attendance() {
 
   const checkOutMutation = useCheckOut({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (newRecord) => {
         toast({ title: "تم تسجيل الخروج", description: "تم تسجيل وقت الخروج بنجاح" });
-        queryClient.invalidateQueries({ queryKey: ["attendance"] });
+        // نحدّث الـ cache مباشرة من الـ response
+        queryClient.setQueryData(
+          ["attendance", branchId, date],
+          (old: any[] = []) => old.map((r) => r.employeeId === newRecord.employeeId ? newRecord : r)
+        );
       },
       onError: (err: any) => {
         toast({ variant: "destructive", title: "خطأ", description: err.message || "حدث خطأ أثناء التسجيل" });
@@ -81,18 +95,30 @@ export default function Attendance() {
 
   const createAttendanceMutation = useCreateAttendance({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (newRecord) => {
         toast({ title: "تم تسجيل الغياب", description: "تم تحديث الحالة بنجاح" });
-        queryClient.invalidateQueries({ queryKey: ["attendance"] });
+        queryClient.setQueryData(
+          ["attendance", branchId, date],
+          (old: any[] = []) => {
+            const exists = old.find((r) => r.employeeId === newRecord.employeeId);
+            if (exists) {
+              return old.map((r) => r.employeeId === newRecord.employeeId ? newRecord : r);
+            }
+            return [...old, newRecord];
+          }
+        );
       },
     },
   });
 
   const updateAttendanceMutation = useUpdateAttendance({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (newRecord) => {
         toast({ title: "تم التعديل", description: "تم تعديل السجل بنجاح" });
-        queryClient.invalidateQueries({ queryKey: ["attendance"] });
+        queryClient.setQueryData(
+          ["attendance", branchId, date],
+          (old: any[] = []) => old.map((r) => r.id === newRecord.id ? newRecord : r)
+        );
         setIsEditOpen(false);
       },
       onError: (e: any) =>
@@ -109,10 +135,11 @@ export default function Attendance() {
 
   const openEdit = (employee: any, record: any) => {
     setEditRecord(record);
+    // الوقت محفوظ كـ "HH:mm:ss" نأخذ أول 5 حروف "HH:mm"
     setEForm({
       employeeId: employee.id,
-      checkIn: record?.checkIn ? record.checkIn.substring(11, 16) : "",
-      checkOut: record?.checkOut ? record.checkOut.substring(11, 16) : "",
+      checkIn:  record?.checkIn  ? record.checkIn.slice(0, 5)  : "",
+      checkOut: record?.checkOut ? record.checkOut.slice(0, 5) : "",
       status: record?.status || AttendanceStatus.present,
       notes: record?.notes || "",
     });
@@ -127,8 +154,8 @@ export default function Attendance() {
       notes: eForm.notes || undefined,
       employeeId: eForm.employeeId,
       date,
-      checkIn: noTime ? null : eForm.checkIn ? new Date(date + "T" + eForm.checkIn).toISOString() : null,
-      checkOut: noTime ? null : eForm.checkOut ? new Date(date + "T" + eForm.checkOut).toISOString() : null,
+      checkIn: noTime ? null : eForm.checkIn ? eForm.checkIn : null,
+      checkOut: noTime ? null : eForm.checkOut ? eForm.checkOut : null,
     };
 
     if (editRecord?.id) {

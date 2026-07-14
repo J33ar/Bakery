@@ -15,41 +15,54 @@ import { formatZodError } from "../lib/zodError";
 
 const router: IRouter = Router();
 
-const STANDARD_SHIFT_START = "08:00:00";
-const STANDARD_SHIFT_END = "16:00:00";
+// 9 ساعات = 540 دقيقة — أي شيء زيادة = إضافي
+const SHIFT_MINUTES = 9 * 60;
 
-function toMinutes(time: string): number {
-  const [h, m] = time.split(":").map(Number);
-  return (h ?? 0) * 60 + (m ?? 0);
-}
-
-function extractTime(value: string | null): string | null {
-  if (!value) return null;
-  // ISO string: "2026-07-11T08:00:00.000Z" → "08:00:00"
+/**
+ * يحوّل أي صيغة وقت إلى milliseconds قابل للمقارنة
+ * يقبل: ISO كامل، أو "HH:mm:ss"، أو "HH:mm"
+ * لضمان دقة الحساب نستخدم Date object
+ */
+function toMs(value: string): number {
   if (value.includes("T")) {
-    return value.split("T")[1]!.slice(0, 8);
+    // ISO string — نستخدم Date مباشرة
+    return new Date(value).getTime();
   }
-  // already "HH:mm:ss" or "HH:mm"
-  return value.slice(0, 8);
+  // "HH:mm:ss" أو "HH:mm" — نبني Date بتاريخ ثابت
+  const [h, m, s] = value.split(":").map(Number);
+  const d = new Date(2000, 0, 1, h ?? 0, m ?? 0, s ?? 0);
+  return d.getTime();
 }
 
+/**
+ * يحسب ساعات العمل والإضافي والغياب الجزئي
+ * - workMinutes     = الفرق الفعلي بين الدخول والخروج
+ * - overtimeMinutes = workMinutes > 540 ? الزيادة : 0
+ * - lateMinutes     = workMinutes < 540 ? النقص : 0
+ */
 function computeDerived(checkIn: string | null, checkOut: string | null) {
-  const inTime = extractTime(checkIn);
-  const outTime = extractTime(checkOut);
-  if (!inTime || !outTime) {
+  if (!checkIn || !checkOut) {
     return { workMinutes: null, overtimeMinutes: null, lateMinutes: null, earlyLeaveMinutes: null };
   }
-  const inMin = toMinutes(inTime);
-  const outMin = toMinutes(outTime);
-  const shiftStart = toMinutes(STANDARD_SHIFT_START);
-  const shiftEnd = toMinutes(STANDARD_SHIFT_END);
+
+  let diffMs = toMs(checkOut) - toMs(checkIn);
+
+  // دعم الدوام الليلي — إذا الخروج قبل الدخول نضيف 24 ساعة
+  if (diffMs < 0) diffMs += 24 * 60 * 60 * 1000;
+
+  const workMinutes     = Math.round(diffMs / 60000);
+  const overtimeMinutes = Math.max(0, workMinutes - SHIFT_MINUTES);
+  const absenceMinutes  = Math.max(0, SHIFT_MINUTES - workMinutes);
+
   return {
-    workMinutes: Math.max(0, outMin - inMin),
-    lateMinutes: Math.max(0, inMin - shiftStart),
-    earlyLeaveMinutes: Math.max(0, shiftEnd - outMin),
-    overtimeMinutes: Math.max(0, outMin - shiftEnd),
+    workMinutes,
+    overtimeMinutes,
+    lateMinutes: absenceMinutes,
+    earlyLeaveMinutes: 0,
   };
 }
+
+// ── serialize ─────────────────────────────────────────────────────────────────
 
 async function serialize(a: any) {
   const employee = await EmployeeModel.findById(a.employeeId);
@@ -59,16 +72,18 @@ async function serialize(a: any) {
     employeeName: employee?.fullName ?? "",
     branchId: employee?.branchId?.toString() ?? "",
     date: a.date,
-    checkIn: a.checkIn ?? null,
+    checkIn:  a.checkIn  ?? null,
     checkOut: a.checkOut ?? null,
-    workMinutes: a.workMinutes ?? null,
-    overtimeMinutes: a.overtimeMinutes ?? null,
-    lateMinutes: a.lateMinutes ?? null,
+    workMinutes:       a.workMinutes       ?? null,
+    overtimeMinutes:   a.overtimeMinutes   ?? null,
+    lateMinutes:       a.lateMinutes       ?? null,
     earlyLeaveMinutes: a.earlyLeaveMinutes ?? null,
-    notes: a.notes ?? null,
+    notes:  a.notes  ?? null,
     status: a.status,
   };
 }
+
+// ── GET list ──────────────────────────────────────────────────────────────────
 
 router.get("/attendance", requireAuth, async (req, res): Promise<void> => {
   const query = ListAttendanceQueryParams.safeParse(req.query);
@@ -90,7 +105,7 @@ router.get("/attendance", requireAuth, async (req, res): Promise<void> => {
   if (query.data.from || query.data.to) {
     filter.date = {};
     if (query.data.from) filter.date.$gte = query.data.from;
-    if (query.data.to) filter.date.$lte = query.data.to;
+    if (query.data.to)   filter.date.$lte = query.data.to;
   }
 
   let rows = await AttendanceModel.find(filter);
@@ -98,12 +113,14 @@ router.get("/attendance", requireAuth, async (req, res): Promise<void> => {
     rows = rows.filter((r: any) => employeeIds!.includes(r.employeeId.toString()));
   }
 
-  // فلترة السجلات اليتيمة (موظفون محذوفون)
-  const allEmployeeIds = (await EmployeeModel.find({}).select("_id")).map((e: any) => e._id.toString());
-  rows = rows.filter((r: any) => allEmployeeIds.includes(r.employeeId.toString()));
+  // حذف السجلات اليتيمة
+  const allIds = (await EmployeeModel.find({}).select("_id")).map((e: any) => e._id.toString());
+  rows = rows.filter((r: any) => allIds.includes(r.employeeId.toString()));
 
   res.json(await Promise.all(rows.map(serialize)));
 });
+
+// ── POST manual ───────────────────────────────────────────────────────────────
 
 router.post("/attendance", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateAttendanceBody.safeParse(req.body);
@@ -112,15 +129,16 @@ router.post("/attendance", requireAuth, async (req, res): Promise<void> => {
     return;
   }
   const derived = computeDerived(parsed.data.checkIn ?? null, parsed.data.checkOut ?? null);
-  const record = await AttendanceModel.create({
+  const record  = await AttendanceModel.create({
     ...parsed.data,
     ...derived,
     status: parsed.data.status ?? "present",
   });
-
   await logAudit(req.session.user, null, "تسجيل حضور", `سجل حضور جديد للموظف ${record.employeeId}`);
   res.status(201).json(await serialize(record));
 });
+
+// ── POST check-in ─────────────────────────────────────────────────────────────
 
 router.post("/attendance/check-in", requireAuth, async (req, res): Promise<void> => {
   const parsed = CheckInBody.safeParse(req.body);
@@ -128,26 +146,30 @@ router.post("/attendance/check-in", requireAuth, async (req, res): Promise<void>
     res.status(400).json({ error: formatZodError(parsed.error) });
     return;
   }
-  const time = new Date().toTimeString().slice(0, 8);
-  const date = new Date().toISOString().slice(0, 10);
+
+  const now        = new Date();
+  const timeStr    = now.toTimeString().slice(0, 8);   // "HH:mm:ss" بتوقيت السيرفر
+  const dateStr    = now.toISOString().slice(0, 10);   // "YYYY-MM-DD"
   const employeeId = String(parsed.data.employeeId);
 
-  const existing = await AttendanceModel.findOne({ employeeId, date });
+  const existing = await AttendanceModel.findOne({ employeeId, date: dateStr });
   let record;
   if (existing) {
     record = await AttendanceModel.findByIdAndUpdate(
       existing._id,
-      { checkIn: time, status: "present" },
+      { checkIn: timeStr, status: "present" },
       { new: true },
     );
   } else {
-    const derived = computeDerived(time, null);
     record = await AttendanceModel.create({
       employeeId,
-      date,
-      checkIn: time,
+      date: dateStr,
+      checkIn: timeStr,
       status: "present",
-      ...derived,
+      workMinutes: null,
+      overtimeMinutes: null,
+      lateMinutes: null,
+      earlyLeaveMinutes: null,
     });
   }
 
@@ -155,26 +177,30 @@ router.post("/attendance/check-in", requireAuth, async (req, res): Promise<void>
   res.status(201).json(await serialize(record));
 });
 
+// ── POST check-out ────────────────────────────────────────────────────────────
+
 router.post("/attendance/check-out", requireAuth, async (req, res): Promise<void> => {
   const parsed = CheckOutBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: formatZodError(parsed.error) });
     return;
   }
-  const time = new Date().toTimeString().slice(0, 8);
-  const date = new Date().toISOString().slice(0, 10);
+
+  const now        = new Date();
+  const timeStr    = now.toTimeString().slice(0, 8);
+  const dateStr    = now.toISOString().slice(0, 10);
   const employeeId = String(parsed.data.employeeId);
 
-  const existing = await AttendanceModel.findOne({ employeeId, date });
+  const existing = await AttendanceModel.findOne({ employeeId, date: dateStr });
   if (!existing) {
     res.status(404).json({ error: "لا يوجد تسجيل دخول لهذا اليوم" });
     return;
   }
 
-  const derived = computeDerived(existing.checkIn ?? null, time);
-  const record = await AttendanceModel.findByIdAndUpdate(
+  const derived = computeDerived(existing.checkIn ?? null, timeStr);
+  const record  = await AttendanceModel.findByIdAndUpdate(
     existing._id,
-    { checkOut: time, ...derived },
+    { checkOut: timeStr, ...derived },
     { new: true },
   );
 
@@ -182,9 +208,11 @@ router.post("/attendance/check-out", requireAuth, async (req, res): Promise<void
   res.json(await serialize(record));
 });
 
+// ── PATCH ─────────────────────────────────────────────────────────────────────
+
 router.patch("/attendance/:id", requireAuth, async (req, res): Promise<void> => {
   const params = UpdateAttendanceParams.safeParse(req.params);
-  const body = UpdateAttendanceBody.safeParse(req.body);
+  const body   = UpdateAttendanceBody.safeParse(req.body);
   if (!params.success || !body.success) {
     res.status(400).json({ error: formatZodError((params.error ?? body.error)!) });
     return;
@@ -196,29 +224,40 @@ router.patch("/attendance/:id", requireAuth, async (req, res): Promise<void> => 
     return;
   }
 
-  // استخرج الأوقات — إذا null يعني امسحها، إذا undefined خذ القيمة الموجودة
-  const newCheckIn = body.data.checkIn !== undefined ? extractTime(body.data.checkIn) : extractTime(existing.checkIn ?? null);
-  const newCheckOut = body.data.checkOut !== undefined ? extractTime(body.data.checkOut) : extractTime(existing.checkOut ?? null);
-
-  const derived = computeDerived(newCheckIn, newCheckOut);
-
-  const updateData: any = {
-    status: body.data.status ?? existing.status,
-    notes: body.data.notes !== undefined ? body.data.notes : existing.notes,
-    checkIn: newCheckIn,
-    checkOut: newCheckOut,
-    ...derived,
-  };
+  const newCheckIn  = body.data.checkIn  !== undefined ? body.data.checkIn  : (existing.checkIn  ?? null);
+  const newCheckOut = body.data.checkOut !== undefined ? body.data.checkOut : (existing.checkOut ?? null);
+  const derived     = computeDerived(newCheckIn, newCheckOut);
 
   const record = await AttendanceModel.findByIdAndUpdate(
     params.data.id,
-    updateData,
+    {
+      status:   body.data.status ?? existing.status,
+      notes:    body.data.notes !== undefined ? body.data.notes : existing.notes,
+      checkIn:  newCheckIn,
+      checkOut: newCheckOut,
+      ...derived,
+    },
     { new: true },
   );
 
   await logAudit(req.session.user, null, "تعديل حضور", `تعديل سجل حضور ${params.data.id}`);
   res.json(await serialize(record));
 });
+
+// ── إعادة حساب جميع السجلات (مؤقت) ─────────────────────────────────────────
+
+router.post("/attendance/recalculate", requireAuth, async (req, res): Promise<void> => {
+  const all = await AttendanceModel.find({ checkIn: { $ne: null }, checkOut: { $ne: null } });
+  let updated = 0;
+  for (const r of all) {
+    const derived = computeDerived(r.checkIn ?? null, r.checkOut ?? null);
+    await AttendanceModel.findByIdAndUpdate(r._id, derived);
+    updated++;
+  }
+  res.json({ success: true, updated });
+});
+
+// ── DELETE ────────────────────────────────────────────────────────────────────
 
 router.delete("/attendance/:id", requireAuth, async (req, res): Promise<void> => {
   const params = DeleteAttendanceParams.safeParse(req.params);

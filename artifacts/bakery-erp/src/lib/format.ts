@@ -31,14 +31,18 @@ export function formatDateTime(dateString: string | null | undefined): string {
 export function formatTime(dateString: string | null | undefined): string {
   if (!dateString) return "-";
   try {
-    // Handling HH:mm format vs ISO format
-    if (dateString.includes('T')) {
-      return format(parseISO(dateString), "hh:mm a", { locale: ar });
+    // نأخذ الوقت مباشرة من الـ string بدون تحويل timezone
+    let timePart: string;
+    if (dateString.includes("T")) {
+      // ISO: "2026-07-15T08:00:00.000Z" → نأخذ "08:00"
+      timePart = dateString.split("T")[1]!.slice(0, 5);
+    } else {
+      // "HH:mm:ss" أو "HH:mm"
+      timePart = dateString.slice(0, 5);
     }
-    const [hours, minutes] = dateString.split(':');
+    const [h, m] = timePart.split(":").map(Number);
     const d = new Date();
-    d.setHours(parseInt(hours, 10));
-    d.setMinutes(parseInt(minutes, 10));
+    d.setHours(h ?? 0, m ?? 0, 0, 0);
     return format(d, "hh:mm a", { locale: ar });
   } catch (e) {
     return dateString;
