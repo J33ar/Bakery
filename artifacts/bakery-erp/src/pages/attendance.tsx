@@ -262,9 +262,14 @@ export default function Attendance() {
                         {record?.workMinutes ? (
                           <div className="text-sm">
                             <div>{formatMinutesAsHours(record.workMinutes)}</div>
-                            {record.overtimeMinutes ? (
+                            {(record.overtimeMinutes ?? 0) > 0 ? (
                               <div className="text-xs text-green-600 font-medium">
                                 +{formatMinutesAsHours(record.overtimeMinutes)} إضافي
+                              </div>
+                            ) : null}
+                            {(record.lateMinutes ?? 0) > 0 ? (
+                              <div className="text-xs text-destructive font-medium">
+                                -{formatMinutesAsHours(record.lateMinutes)} نقص
                               </div>
                             ) : null}
                           </div>
