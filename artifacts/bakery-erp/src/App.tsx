@@ -38,9 +38,10 @@ function getStoredUser() {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: false,
+      retry: 2,
+      retryDelay: 3000,
       refetchOnWindowFocus: false,
-      staleTime: 0,
+      staleTime: 30 * 1000, // 30 ثانية
     },
   },
 });
