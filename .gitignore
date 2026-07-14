@@ -47,3 +47,11 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Environment files - never commit secrets
+.env
+.env.*
+artifacts/api-server/.env
+artifacts/**/.env
+
+.env
