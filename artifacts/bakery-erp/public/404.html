@@ -3,11 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <script>
-      var path = window.location.pathname;
-      var base = '/Bakery';
-      var rest = path.replace(base, '') || '/';
-      sessionStorage.setItem('spa-redirect', rest + window.location.search + window.location.hash);
-      window.location.replace(base + '/');
+      // الحفاظ على الـ path الكامل عند الـ refresh على GitHub Pages
+      var l = window.location;
+      sessionStorage.setItem(
+        'spa-redirect',
+        l.pathname + l.search + l.hash
+      );
+      l.replace(l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') + '/Bakery/');
     </script>
   </head>
   <body></body>
