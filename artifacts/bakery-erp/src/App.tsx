@@ -41,7 +41,7 @@ const queryClient = new QueryClient({
       retry: 2,
       retryDelay: 3000,
       refetchOnWindowFocus: false,
-      staleTime: 30 * 1000, // 30 ثانية
+      staleTime: 0,
     },
   },
 });

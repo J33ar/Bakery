@@ -71,6 +71,8 @@ export async function calculatePayroll(
 
   let overtimeAmount = 0;
   let absentDays = 0;
+  let shortageMinutes = 0; // نقص ساعات الدوام (أقل من 9 ساعات)
+
   for (const record of attendanceRecords) {
     if (record.status === "absent") absentDays += 1;
     if (record.overtimeMinutes && record.overtimeMinutes > 0) {
@@ -80,8 +82,18 @@ export async function calculatePayroll(
       );
       overtimeAmount += (record.overtimeMinutes / 60) * rate;
     }
+    // نقص الساعات — lateMinutes يحتوي على الدقائق الناقصة عن 9 ساعات
+    if (record.lateMinutes && record.lateMinutes > 0 && record.status !== "absent") {
+      shortageMinutes += record.lateMinutes;
+    }
   }
+
   overtimeAmount = Math.round(overtimeAmount * 100) / 100;
+
+  // خصم نقص الساعات: (دقائق النقص / 60) * (الراتب اليومي / 9 ساعات)
+  const hourlyRate = dailyRate / 9;
+  const shortageDeduction = Math.round((shortageMinutes / 60) * hourlyRate * 100) / 100;
+
   const absenceDeduction = Math.round(dailyRate * absentDays * 100) / 100;
 
   const bonuses = await BonusModel.find({
@@ -117,7 +129,8 @@ export async function calculatePayroll(
         bonusesAmount -
         deductionsAmount -
         loanDeduction -
-        absenceDeduction) *
+        absenceDeduction -
+        shortageDeduction) *
         100,
     ) / 100;
 
@@ -131,7 +144,7 @@ export async function calculatePayroll(
     bonusesAmount,
     deductionsAmount,
     loanDeduction,
-    absenceDeduction,
+    absenceDeduction: Math.round((absenceDeduction + shortageDeduction) * 100) / 100,
     finalAmount,
   };
 }
