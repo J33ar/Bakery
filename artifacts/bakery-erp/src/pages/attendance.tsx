@@ -261,15 +261,15 @@ export default function Attendance() {
                       <TableCell>
                         {record?.workMinutes ? (
                           <div className="text-sm">
-                            <div>{formatMinutesAsHours(record.workMinutes)}</div>
+                            <span dir="ltr">{formatMinutesAsHours(record.workMinutes)}</span>
                             {(record.overtimeMinutes ?? 0) > 0 ? (
                               <div className="text-xs text-green-600 font-medium">
-                                +{formatMinutesAsHours(record.overtimeMinutes)} إضافي
+                                +<span dir="ltr">{formatMinutesAsHours(record.overtimeMinutes)}</span> إضافي
                               </div>
                             ) : null}
                             {(record.lateMinutes ?? 0) > 0 ? (
                               <div className="text-xs text-destructive font-medium">
-                                -{formatMinutesAsHours(record.lateMinutes)} نقص
+                                -<span dir="ltr">{formatMinutesAsHours(record.lateMinutes)}</span> نقص
                               </div>
                             ) : null}
                           </div>

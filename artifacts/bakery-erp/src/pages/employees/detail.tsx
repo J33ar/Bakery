@@ -196,7 +196,7 @@ export default function EmployeeDetail() {
                               </TableCell>
                               <TableCell dir="ltr" className="text-right">{formatTime(a.checkIn)}</TableCell>
                               <TableCell dir="ltr" className="text-right">{formatTime(a.checkOut)}</TableCell>
-                              <TableCell>{formatMinutesAsHours(a.workMinutes)}</TableCell>
+                              <TableCell><span dir="ltr">{formatMinutesAsHours(a.workMinutes)}</span></TableCell>
                               <TableCell>
                                 <div className="flex flex-col gap-1 text-xs">
                                   {a.lateMinutes ? <span className="text-destructive font-medium flex items-center gap-1"><ArrowDownRight size={12}/> تأخير: {a.lateMinutes} د</span> : null}

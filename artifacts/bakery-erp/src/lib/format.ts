@@ -62,7 +62,9 @@ export function formatMinutesAsHours(minutes: number | null | undefined): string
   if (minutes === null || minutes === undefined) return "-";
   const h = Math.floor(minutes / 60);
   const m = Math.floor(minutes % 60);
-  if (h === 0) return `${m} د`;
-  if (m === 0) return `${h} س`;
-  return `\u200E${h} س ${m} د`;
+  // نحول للأرقام العربية عشان تظهر صح في RTL
+  const toAr = (n: number) => n.toLocaleString("ar-EG");
+  if (h === 0) return `${toAr(m)} دقيقة`;
+  if (m === 0) return `${toAr(h)} ساعة`;
+  return `${toAr(h)} س و ${toAr(m)} د`;
 }
