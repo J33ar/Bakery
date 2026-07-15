@@ -62,7 +62,7 @@ export function formatMinutesAsHours(minutes: number | null | undefined): string
   if (minutes === null || minutes === undefined) return "-";
   const h = Math.floor(minutes / 60);
   const m = Math.floor(minutes % 60);
-  if (h === 0) return `${m} دقيقة`;
-  if (m === 0) return `${h} ساعة`;
-  return `${h} س و ${m} د`;
+  if (h === 0) return `${m} د`;
+  if (m === 0) return `${h} س`;
+  return `\u200E${h} س ${m} د`;
 }
